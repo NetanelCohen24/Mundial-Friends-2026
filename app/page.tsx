@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/utils/supabase/client";
 
 const TOURNAMENT_START = new Date("2026-06-11T22:00:00+03:00").getTime();
 
@@ -17,12 +19,22 @@ function getTimeLeft(): TimeLeft {
 }
 
 export default function Home() {
-  // Start with null on SSR to avoid hydration mismatch, then populate on mount
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [authLoaded, setAuthLoaded] = useState(false);
 
   useEffect(() => {
+    // Countdown timer
     setTimeLeft(getTimeLeft());
     const id = setInterval(() => setTimeLeft(getTimeLeft()), 1000);
+
+    // Auth state
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserEmail(user?.email ?? null);
+      setAuthLoaded(true);
+    });
+
     return () => clearInterval(id);
   }, []);
 
@@ -45,15 +57,11 @@ export default function Home() {
 
       {/* Hero */}
       <section className="mx-auto px-6 max-w-6xl pt-8 pb-24">
-        <p
-          className="font-body font-bold text-sunset text-xs sm:text-sm tracking-[0.2em] mb-5 animate-fade-up delay-100"
-        >
+        <p className="font-body font-bold text-sunset text-xs sm:text-sm tracking-[0.2em] mb-5 animate-fade-up delay-100">
           ⚽ FIFA WORLD CUP · USA · CANADA · MEXICO
         </p>
 
-        <h1
-          className="font-display font-black leading-[0.95] text-[clamp(3rem,11vw,8.5rem)] text-pitch-dark mb-6 animate-fade-up delay-200"
-        >
+        <h1 className="font-display font-black leading-[0.95] text-[clamp(3rem,11vw,8.5rem)] text-pitch-dark mb-6 animate-fade-up delay-200">
           מי מנחש
           <br />
           <span className="text-sunset">הכי טוב</span>
@@ -82,20 +90,36 @@ export default function Home() {
           </div>
         </div>
 
-        {/* CTA - disabled until auth is ready */}
+        {/* CTA - dynamic based on auth state */}
         <div className="animate-fade-up delay-500">
-          <button
-            disabled
-            aria-disabled="true"
-            className="bg-pitch text-cream font-display font-bold text-base sm:text-lg px-7 sm:px-9 py-4 rounded-full opacity-50 cursor-not-allowed inline-flex items-center gap-3"
+          {!authLoaded ? (
+            <div className="inline-block bg-pitch/30 h-[60px] w-[260px] rounded-full animate-pulse" />
+          ) : userEmail ? (
+            <Link
+              href="/dashboard"
+              className="bg-pitch text-cream font-display font-bold text-base sm:text-lg px-7 sm:px-9 py-4 rounded-full inline-flex items-center gap-3 hover:bg-pitch-dark transition-colors"
+            >
+              <span>ברוך הבא, {userEmail.split("@")[0]}</span>
+              <span className="text-xs font-body font-medium bg-cream/15 px-2.5 py-1 rounded-full">
+                → לדשבורד
+              </span>
+            </Link>
+          ) : (
+            <Link
+              href="/auth/login"
+              className="bg-pitch text-cream font-display font-bold text-base sm:text-lg px-7 sm:px-9 py-4 rounded-full inline-flex items-center gap-3 hover:bg-pitch-dark transition-colors"
+            >
+              <span>✉️ התחבר עם המייל שלך</span>
+            </Link>
+          )}
+          <Link
+            href="/matches"
+            className="inline-flex items-center gap-2 font-body font-bold text-base px-7 py-4 rounded-full border-2 border-pitch text-pitch hover:bg-pitch hover:text-cream transition-colors mr-3 mt-3"
           >
-            <span>התחבר עם Google</span>
-            <span className="text-xs font-body font-medium bg-cream/15 px-2.5 py-1 rounded-full">
-              בקרוב
-            </span>
-          </button>
+            צפו במשחקים
+          </Link>
           <p className="text-sm text-ink/60 mt-4 max-w-md">
-            האתר עדיין בבנייה - התחברות תיפתח לפני שריקת הפתיחה. שמרו את הכתובת ✨
+            התחברות חד-לחיצתית עם Magic Link. ללא סיסמאות, ללא טפסי הרשמה.
           </p>
         </div>
       </section>
